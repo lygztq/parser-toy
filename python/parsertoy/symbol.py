@@ -164,8 +164,8 @@ class SymbolTable(object):
         return name in self.symbols
 
     def get_anonymous_symbol_name(self) -> str:
-        name = "symbol_{}".format(num_anonymous_symbol)
-        num_anonymous_symbol += 1
+        name = "symbol_{}".format(self.num_anonymous_symbol)
+        self.num_anonymous_symbol += 1
         return name
 
     def register_symbol(self, obj: Symbol):
@@ -198,9 +198,11 @@ class SymbolTable(object):
         for sym in non_terminals:
             for p in sym.productions:
                 start_sym = self.get_symbol(p[0])
+                if start_sym is None:
+                    raise RuntimeError("Symbol {} is not defined".format(p[0]))
                 remain = p[1:]
                 if start_sym.is_non_terminal and order[start_sym.name] < order[sym.name]:
-                    sym.productions.extend(list(map(lambda x: x + remain), start_sym.productions))
+                    sym.productions.extend(list(map(lambda x: x + remain, start_sym.productions)))
             sym.remove_left_recursions()
 
     def build_first_set(self) -> FirstSet:
