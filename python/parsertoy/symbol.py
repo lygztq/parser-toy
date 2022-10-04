@@ -13,7 +13,7 @@ class Symbol(object):
     def __init__(self, name=None, productions=[]):
         """ Do NOT use this directly, use symbol instead """
         self.name : str = SymbolTable.current_table().get_anonymous_symbol_name() if name is None else name
-        self.productions : List[Production] = productions.copy()
+        self.productions : List[Production] = Symbol.new_production_set(productions.copy())
 
     def is_left_recursion(self, p: Production):
         return len(p) > 0 and self.name == p[0]
@@ -22,12 +22,25 @@ class Symbol(object):
         table = SymbolTable.current_table()
         return all(map(lambda x: all(map(lambda s: table.has(s), x)), self.productions)) and table.has(self.name) and all(map(lambda x: x not in self.name, Symbol._disable_chars))
 
-    def remove_duplicate(self):
+    @staticmethod
+    def remove_duplicate_productions(productions: List[Production]):
         new_productions = []
-        for p in self.productions:
+        for p in productions:
             if p not in new_productions:
                 new_productions.append(p)
-        self.productions = new_productions
+        return new_productions
+
+    @staticmethod
+    def new_production_set(productions: List[Production]):
+        productions = Symbol.remove_duplicate_productions(productions)
+        return productions
+
+    def remove_duplicate(self):
+        self.productions = Symbol.remove_duplicate_productions(self.productions)
+
+    def extend_productions(self, prod: List[Production]):
+        self.productions.extend(prod)
+        self.remove_duplicate()
 
     def left_factoring(self):
         prefixs = {}
@@ -64,9 +77,9 @@ class Symbol(object):
         new_name = self.name + '\''
         if new_name in table.symbols:
             new_name = None
-        symbol(name=new_name, productions=factor_remains)
+        symbol(name=new_name, productions=Symbol.new_production_set(factor_remains))
         new_prod.append(max_prefix.split(div_char) + [new_name])
-        self.productions = new_prod
+        self.productions = Symbol.new_production_set(new_prod)
         return True
 
     def remove_left_recursions(self):
@@ -83,8 +96,8 @@ class Symbol(object):
         new_name = self.name + '\''
         if new_name in table.symbols:
             new_name = None
-        _ = symbol(name=new_name, productions=list(map(lambda p: p + [new_name], alphas)) + [[self.EPSILON_NAME]])
-        self.productions = list(map(lambda p: p + [new_name], betas))
+        _ = symbol(name=new_name, productions=Symbol.new_production_set(list(map(lambda p: p + [new_name], alphas)) + [[self.EPSILON_NAME]]))
+        self.productions = Symbol.new_production_set(list(map(lambda p: p + [new_name], betas)))
 
     @property
     def is_non_terminal(self) -> bool:
@@ -202,7 +215,7 @@ class SymbolTable(object):
                     raise RuntimeError("Symbol {} is not defined".format(p[0]))
                 remain = p[1:]
                 if start_sym.is_non_terminal and order[start_sym.name] < order[sym.name]:
-                    sym.productions.extend(list(map(lambda x: x + remain, start_sym.productions)))
+                    sym.extend_productions(list(map(lambda x: x + remain, start_sym.productions)))
             sym.remove_left_recursions()
 
     def build_first_set(self) -> FirstSet:
