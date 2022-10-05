@@ -10,17 +10,20 @@ class Symbol(object):
     _disable_chars = ["="]
     EPSILON_NAME = "epsilon"
     EOF_NAME = "EOF"
+
     def __init__(self, name=None, productions=[]):
         """ Do NOT use this directly, use symbol instead """
         self.name : str = SymbolTable.current_table().get_anonymous_symbol_name() if name is None else name
-        self.productions : List[Production] = Symbol.new_production_set(productions.copy())
+        self.productions : List[Production] = Symbol.new_production_set(productions)
 
     def is_left_recursion(self, p: Production):
         return len(p) > 0 and self.name == p[0]
 
     def check_valid(self):
         table = SymbolTable.current_table()
-        return all(map(lambda x: all(map(lambda s: table.has(s), x)), self.productions)) and table.has(self.name) and all(map(lambda x: x not in self.name, Symbol._disable_chars))
+        return all(map(lambda x: all(map(lambda s: table.has(s), x)), self.productions)) \
+               and table.has(self.name) \
+               and all(map(lambda x: x not in self.name, Symbol._disable_chars))
 
     @staticmethod
     def remove_duplicate_productions(productions: List[Production]):
